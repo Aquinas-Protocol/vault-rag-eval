@@ -1,0 +1,8 @@
+{
+  "config": "dense (shipped default; hybrid off). The FTS5 lexical arm helps only on exact-identifier queries and is enabled per-corpus, not by default — see the writeup.",
+  "recall@5": 0.96,
+  "recall@10": 0.97,
+  "mrr@10": 0.93,
+  "hit@5": 0.97,
+  "tolerance": 0.05
+}

@@ -21,7 +21,7 @@ import sys
 
 from vrag import config as C
 from vrag.corpus import build_chunk_records, load_pages
-from vrag.embed import embed
+from vrag.embed import cache_key, embed
 from vrag.index_io import index_jsonl
 from vrag.manifest import manifest_json
 
@@ -57,7 +57,17 @@ def main(keyless: bool = False) -> int:
     for q in queries:
         embed(q, keyless=keyless)
 
-    # 3) Write the deterministic artifacts. Force LF (newline="\n") so the bytes
+    # 3) Prune orphan cache vectors. The committed cache must contain EXACTLY the
+    # vectors derivable from corpus + gold (allowlist inversion) — no stray dev
+    # embeddings. In keyless CI an orphan would surface as a `git diff` deletion.
+    expected_keys = {cache_key(r["text"]) for r in records} | {cache_key(q) for q in queries}
+    pruned = 0
+    for p in C.CACHE_DIR.glob("*.json"):
+        if p.stem not in expected_keys:
+            p.unlink()
+            pruned += 1
+
+    # 4) Write the deterministic artifacts. Force LF (newline="\n") so the bytes
     # are identical on Windows and Linux — the provenance gate compares bytes.
     C.FIXTURES_DIR.mkdir(parents=True, exist_ok=True)
     C.INDEX_PATH.write_text(index_jsonl(records), encoding="utf-8", newline="\n")
@@ -69,6 +79,7 @@ def main(keyless: bool = False) -> int:
                 "pages": len(pages),
                 "chunks": len(records),
                 "gold_queries_cached": len(queries),
+                "orphan_vectors_pruned": pruned,
                 "index": str(C.INDEX_PATH.relative_to(C.REPO_ROOT)),
                 "manifest": str(C.MANIFEST_PATH.relative_to(C.REPO_ROOT)),
                 "keyless": keyless,

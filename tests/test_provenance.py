@@ -69,6 +69,20 @@ def test_every_gold_query_has_a_cached_vector():
             assert len(vec) == _embed.EMBED_DIM
 
 
+def test_cache_has_no_orphans():
+    """The committed vector cache must contain EXACTLY the keys for indexed chunks
+    + gold queries — no orphan dev embeddings (reverse provenance)."""
+    expected = {json.loads(ln)["embed_key"] for ln in _committed(C.INDEX_PATH).splitlines() if ln.strip()}
+    if C.GOLD_PATH.exists():
+        for ln in C.GOLD_PATH.read_text(encoding="utf-8").splitlines():
+            if ln.strip():
+                expected.add(_embed.cache_key(json.loads(ln)["query"]))
+    on_disk = {p.stem for p in C.CACHE_DIR.glob("*.json")}
+    assert on_disk == expected, (
+        f"cache mismatch: {len(on_disk - expected)} orphan(s), {len(expected - on_disk)} missing"
+    )
+
+
 def test_denylist_clean():
     from scripts import denylist_scan  # noqa: PLC0415
 

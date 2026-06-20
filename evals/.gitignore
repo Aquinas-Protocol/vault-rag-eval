@@ -1,0 +1,5 @@
+# Generated eval artifacts (regenerable via `make eval` / `python -m evals.run`).
+# The committed sources of truth are gold.jsonl and baseline.json.
+report.json
+metrics.md
+sweep.md
