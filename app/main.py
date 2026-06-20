@@ -79,7 +79,12 @@ def run_demo(query_id: str, mode: str = "dense", top_k: int = 5) -> dict:
     pconn = P.connect() if (hybrid and _state.get("pg_enabled")) else None
     try:
         backend = CloudBackend(_state["qdrant"], pconn)
-        hits = backend.search(d["query"], qvec, top_k=top_k, hybrid=hybrid)
+        # Demo hybrid uses the identifier (trgm) arm at equal weight, so the
+        # lexical rescue on exact-identifier queries is visible. The SHIPPED
+        # default is dense (mode omitted / mode=dense); see the writeup.
+        hits = backend.search(
+            d["query"], qvec, top_k=top_k, hybrid=hybrid, lex_arms=("trgm",), dense_weight=1.0
+        )
     finally:
         if pconn is not None:
             pconn.close()

@@ -20,12 +20,20 @@ of asyncpg ``statement_cache_size=0``).
 from __future__ import annotations
 
 import os
+import re
 
 import psycopg
 
 from ..index_io import read_index
 
 TABLE = os.getenv("PG_TABLE", "chunks")
+
+# Plain word tokens (for the tsvector OR-query) and identifier-shaped tokens
+# (ALLCAPS_SNAKE, code-417, snake_case) for the substring arm. The default text
+# parser splits identifiers on underscores, so the tsvector arm recovers them only
+# via their sub-tokens; the substring arm matches the whole identifier verbatim.
+_WORD_RE = re.compile(r"[A-Za-z0-9]+")
+_IDENT_RE = re.compile(r"[A-Za-z0-9]+(?:[_-][A-Za-z0-9]+)+")
 
 DDL = f"""
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
@@ -59,9 +67,12 @@ def connect(dsn: str | None = None, *, pooled: bool = True) -> psycopg.Connectio
 
 
 def create_schema(direct_dsn: str | None = None) -> None:
-    """Run DDL over the DIRECT url (DDL must not go through the pooler)."""
+    """Run DDL over the DIRECT url (DDL must not go through the pooler). psycopg3's
+    extended protocol allows one statement per execute, so run them individually."""
     with connect(direct_dsn, pooled=False) as conn:
-        conn.execute(DDL)
+        for stmt in (s.strip() for s in DDL.split(";")):
+            if stmt:
+                conn.execute(stmt)
         conn.commit()
 
 
@@ -79,26 +90,56 @@ def seed(conn: psycopg.Connection, rows: list[dict] | None = None) -> int:
     return len(rows)
 
 
+def _terms(query: str, min_len: int = 3, limit: int = 32) -> list[str]:
+    """Distinct lowercase word tokens for an OR tsquery (mirrors the in-process
+    arm's OR-of-terms; underscores already split, matching the tsvector lexemes)."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for t in _WORD_RE.findall(query.lower()):
+        if len(t) >= min_len and t not in seen:
+            seen.add(t)
+            out.append(t)
+    return out[:limit]
+
+
 def lexical_search(conn: psycopg.Connection, query: str, limit: int, *, config: str = "english") -> list[str]:
-    """Full-text ranked point_ids (ts_rank_cd over the chosen tsvector config)."""
+    """Full-text ranked point_ids: OR the query terms (a doc matching more terms
+    ranks higher via ts_rank_cd). AND-ing the whole sentence matches nothing on a
+    long natural-language query, so OR is the honest mirror of the lexical intent."""
+    terms = _terms(query)
+    if not terms:
+        return []
+    tsq = " | ".join(terms)
     col = "tsv_en" if config == "english" else "tsv_simple"
     rows = conn.execute(
         f"SELECT point_id::text FROM {TABLE} "
-        f"WHERE {col} @@ websearch_to_tsquery(%s, %s) "
-        f"ORDER BY ts_rank_cd({col}, websearch_to_tsquery(%s, %s)) DESC LIMIT %s",
-        (config, query, config, query, limit),
+        f"WHERE {col} @@ to_tsquery(%s, %s) "
+        f"ORDER BY ts_rank_cd({col}, to_tsquery(%s, %s)) DESC LIMIT %s",
+        (config, tsq, config, tsq, limit),
     ).fetchall()
     return [r[0] for r in rows]
 
 
 def trgm_search(conn: psycopg.Connection, query: str, limit: int) -> list[str]:
-    """Substring / exact-identifier ranked point_ids via pg_trgm word similarity —
-    this is what recovers exact-identifier recall the tsvector arms split apart."""
+    """Identifier-recall arm: pull identifier-shaped tokens (ALLCAPS_SNAKE, RED-417,
+    snake_case) from the query and match docs that CONTAIN one verbatim (ILIKE,
+    accelerated by the pg_trgm GIN index), ranked by word_similarity. This is what
+    recovers the exact identifiers dense and the underscore-splitting parser miss.
+    Empty when the query has no identifier-shaped token."""
+    idents: list[str] = []
+    seen: set[str] = set()
+    for t in _IDENT_RE.findall(query):
+        if t.lower() not in seen:
+            seen.add(t.lower())
+            idents.append(t)
+    if not idents:
+        return []
+    clauses = " OR ".join(["chunk_text ILIKE %s"] * len(idents))
+    key = max(idents, key=len)  # rank by the longest (most specific) identifier
     rows = conn.execute(
-        f"SELECT point_id::text FROM {TABLE} "
-        f"WHERE chunk_text %% %s "
+        f"SELECT point_id::text FROM {TABLE} WHERE {clauses} "
         f"ORDER BY word_similarity(%s, chunk_text) DESC LIMIT %s",
-        (query, query, limit),
+        [f"%{t}%" for t in idents] + [key, limit],
     ).fetchall()
     return [r[0] for r in rows]
 
