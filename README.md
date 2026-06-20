@@ -7,6 +7,14 @@
 > [email-triage-ts](https://github.com/Aquinas-Protocol/email-triage-ts): same
 > eval discipline, new modality (retrieval), now deployed.
 
+**Live demo:** https://arti0-vault-rag-eval.hf.space — try
+[`/demo/d01`](https://arti0-vault-rag-eval.hf.space/demo/d01) (dense misses an
+identifier query) then
+[`/demo/d01?mode=hybrid`](https://arti0-vault-rag-eval.hf.space/demo/d01?mode=hybrid)
+(the lexical arm fixes it). Free-tier Space — it sleeps when idle and cold-starts
+(~30s) on the first visit; the behavior is also recorded in
+[docs/demo-transcript.md](docs/demo-transcript.md).
+
 ## TL;DR
 
 I built dense and hybrid (dense + lexical) retrieval, then let a reviewed eval set
@@ -38,20 +46,28 @@ keep." The eval is what made that visible. Full argument in the
 ```mermaid
 flowchart LR
   corpus["corpus/ (40 synthetic md docs)"] -->|make fixtures| idx["index.jsonl + manifest<br/>+ content-addressed<br/>embedding cache"]
-  idx -->|seed| qd[("Qdrant<br/>dense vectors<br/>Fly, private .flycast")]
   idx -->|seed| pg[("Neon Postgres<br/>tsvector + pg_trgm<br/>lexical arm")]
-  qd --> rrf{{"RRF fusion<br/>(dense default)"}}
-  pg --> rrf
-  rrf --> api["FastAPI demo<br/>(Fly, scale-to-zero)<br/>canned queries,<br/>committed embeddings"]
+  subgraph space["HF Space (one container, free)"]
+    qd[("Qdrant server<br/>dense vectors")]
+    api["FastAPI demo<br/>canned queries,<br/>committed embeddings"]
+    qd --> api
+  end
+  idx -->|seed on boot| qd
+  pg --> api
+  api --> rrf{{"RRF fusion<br/>(dense default)"}}
   idx -.committed fixtures.-> gate["keyless eval gate<br/>(GitHub Actions)"]
 ```
 
-Two stores by design: dense vectors live in **Qdrant**, lexical/metadata in
-**Postgres**. They share deterministic chunk ids so their ranked lists fuse with
-Reciprocal Rank Fusion. Embeddings are local **Ollama `nomic-embed-text` @ 768**,
-committed as a content-addressed cache — so the whole repo is keyless and
-reproducible (swapping to a hosted model is a one-line change pinned to the
-collection identity).
+Two stores by design: dense vectors live in **Qdrant** (a real `qdrant/qdrant`
+container), lexical/metadata in **Postgres** (managed Neon). They share
+deterministic chunk ids so their ranked lists fuse with Reciprocal Rank Fusion.
+Embeddings are local **Ollama `nomic-embed-text` @ 768**, committed as a
+content-addressed cache — so the whole repo is keyless and reproducible (swapping
+to a hosted model is a one-line change pinned to the collection identity).
+
+The live demo runs the Qdrant server and the app in one free Hugging Face Space;
+`deploy/` also carries the production-grade two-app Fly topology (private Qdrant +
+scale-to-zero app) and the cost reasoning for each — see the writeup.
 
 ## Run it
 
@@ -62,9 +78,9 @@ make eval        # score the gold set, keyless, gate on baseline
 ```
 
 `make eval --sweep` reproduces the dense-vs-hybrid comparison. `make test` runs
-the provenance + unit + store tests. The live demo (when up) answers canned
-queries: `/demo/d01` shows dense missing an identifier query, `?mode=hybrid` shows
-the Postgres lexical arm fixing it. Deploy steps: [deploy/README.md](deploy/README.md).
+the provenance + unit + store tests. Deploy: the free Hugging Face Space via
+`scripts/deploy_hf.py`; the production-grade Fly topology + runbook live in
+[deploy/](deploy/).
 
 ## Privacy & provenance
 

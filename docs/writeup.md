@@ -92,26 +92,33 @@ and flag names, turn the lexical arm on; if they ask conceptual questions, it's
 dead weight. The eval is what lets you make that call with numbers instead of
 folklore.
 
-## Cost: why Fly, not Fargate (2026-06, us-east)
+## Cost: HF Spaces vs Fly vs Fargate (2026-06, us-east)
 
-The deployment is a private Qdrant container + a scale-to-zero FastAPI app on
-Fly.io, plus Neon Postgres. Idle cost is about **$0.30–0.75/mo**, dominated by the
-1 GB Qdrant volume (~$0.15/GB-month, billed even while the machine is stopped;
-snapshots are off because they became billable in Jan 2026). When no one is
-querying, the compute scales to zero.
+The live demo runs at **https://arti0-vault-rag-eval.hf.space** for **$0**: a single
+free Hugging Face Docker Space runs the real `qdrant/qdrant` server next to the
+FastAPI app, with managed Neon Postgres as the lexical arm. The trade for free is
+ephemeral storage (Qdrant re-seeds its 120 vectors from the committed fixtures on
+each boot — sub-second) and idle sleep (a ~30s cold start on the first visit). For
+a public portfolio demo that's the right trade; the proof doesn't depend on the URL
+being warm (the behavior is also recorded in the repo).
 
-The AWS-native equivalent — ECS Fargate for the container, EFS for Qdrant storage,
-an ALB to reach it, and a NAT gateway for a private subnet — runs roughly
-**$40–70/mo always-on**, and the surprise is that the *compute* is the cheap part:
-the ALB (~$16/mo) and the NAT gateway (~$32/mo) are the floor, and a stateful
-vector DB doesn't scale-to-zero cleanly behind them.
+For a workload that actually serves traffic, the topology I'd reach for is the one
+in `deploy/`: a private Qdrant container + a scale-to-zero FastAPI app on Fly.io,
+plus Neon. Idle there is about **$0.30–0.75/mo**, dominated by the 1 GB Qdrant
+volume (~$0.15/GB-month, billed even while the machine is stopped; snapshots off,
+they became billable Jan 2026). The AWS-native equivalent — ECS Fargate, EFS for
+Qdrant storage, an ALB to reach it, a NAT gateway for a private subnet — runs
+roughly **$40–70/mo always-on**, and the surprise is that the *compute* is the
+cheap part: the ALB (~$16/mo) and the NAT gateway (~$32/mo) are the floor, and a
+stateful vector DB doesn't scale-to-zero cleanly behind them.
 
-That cost gap isn't a verdict on AWS; it's a verdict on *this workload*: a
-low-traffic, cost-sensitive, scale-to-zero side service. **Fargate wins** the
-moment you need VPC-private data paths, org-standard ECS/IaC, or you're already
-paying for the ALB and NAT for other services — then the marginal cost of one more
-task is small and the integration is the point. Naming when your own choice would
-flip is the difference between a cost comparison and a cost rationalization.
+None of that is a verdict on a platform; it's a verdict on the *workload*. **HF
+Spaces** wins for a zero-cost public demo that tolerates cold starts. **Fly** wins
+for a low-traffic always-reachable service on a tight budget. **Fargate** wins the
+moment you need VPC-private data paths, org-standard ECS/IaC, or you already run an
+ALB and NAT — then one more task is marginal and the integration is the point.
+Naming when your own choice flips is the difference between a cost comparison and a
+cost rationalization.
 
 ## What this does NOT defend against
 
