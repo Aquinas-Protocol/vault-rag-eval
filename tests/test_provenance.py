@@ -83,6 +83,18 @@ def test_cache_has_no_orphans():
     )
 
 
+def test_demo_queries_valid():
+    """Every canned demo query has a cached embedding and resolves to real slugs."""
+    demo_path = C.FIXTURES_DIR / "demo_queries.json"
+    if not demo_path.exists():
+        pytest.skip("no demo_queries.json")
+    index_slugs = {json.loads(ln)["slug"] for ln in _committed(C.INDEX_PATH).splitlines() if ln.strip()}
+    for d in json.loads(demo_path.read_text(encoding="utf-8")):
+        assert _embed.cache_key(d["query"]) == d["embed_key"], f"{d['id']}: stale embed_key"
+        assert len(_embed.read_cached(d["embed_key"])) == _embed.EMBED_DIM
+        assert all(s in index_slugs for s in d["relevant"]), f"{d['id']}: unknown slug"
+
+
 def test_denylist_clean():
     from scripts import denylist_scan  # noqa: PLC0415
 

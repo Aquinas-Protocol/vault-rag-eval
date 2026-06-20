@@ -1,0 +1,30 @@
+# FastAPI demo service on Fly — stateless, scale-to-zero. Reaches the private
+# Qdrant over .flycast and Neon over the pooled URL. Build context is the repo
+# root so the Dockerfile can COPY src/, app/, fixtures/.
+#
+# Deploy from the repo root:
+#   fly deploy --config deploy/app/fly.toml --dockerfile app/Dockerfile
+# Secrets (never in this file):
+#   fly secrets set QDRANT_API_KEY=<same as the qdrant app's key>
+#   fly secrets set NEON_DATABASE_URL=<neon POOLED url, ...-pooler...>
+#
+# Cold start is serial (app wakes, then Qdrant); the app gives the first Qdrant
+# call a longer timeout so the first request is not a 502.
+
+app = "CHANGEME-vrag-demo"
+primary_region = "iad"            # SAME org + region as the qdrant app (for .flycast)
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[env]
+  QDRANT_URL = "http://CHANGEME-vrag-qdrant.flycast:6333"
+  QDRANT_COLLECTION = "vrag_chunks"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

@@ -1,0 +1,76 @@
+[
+  {
+    "id": "d01",
+    "query": "What does the FENCING_EPOCH_ID guard value do and why is it attached to writes?",
+    "kind": "exact",
+    "relevant": [
+      "leader-election"
+    ],
+    "embed_key": "ba90d253d224aea0ad631dfed61a23d2a962aa73dc11372293a77e4858c362fa"
+  },
+  {
+    "id": "d02",
+    "query": "What does the NEGATIVE_CACHE_TTL_S setting control and why does it matter for repeated failed lookups?",
+    "kind": "exact",
+    "relevant": [
+      "dns-resolution"
+    ],
+    "embed_key": "8cc01f2bab5690ec77958ff5df96c3019e9e6e5de335913879c976723bb895c7"
+  },
+  {
+    "id": "d03",
+    "query": "What does the configuration error RED-417 mean and how is it triggered?",
+    "kind": "exact",
+    "relevant": [
+      "red-method"
+    ],
+    "embed_key": "2dd920d0d8cc1526d7ae03cd5c0a54e5cfd2a2791b6f8b20f1a921c7884487a3"
+  },
+  {
+    "id": "d04",
+    "query": "Why is reusing a set of already-open database sessions cheaper than establishing a new link for every short request?",
+    "kind": "paraphrase",
+    "relevant": [
+      "connection-pooling"
+    ],
+    "embed_key": "d6a57d7ca28e562404d7159cec6ffad5e2d1f34c40de85d9df34c861a3487e6a"
+  },
+  {
+    "id": "d05",
+    "query": "Why can't an attacker who steals my server's long-term private key go back and decrypt conversations they recorded months ago?",
+    "kind": "paraphrase",
+    "relevant": [
+      "forward-secrecy"
+    ],
+    "embed_key": "74ea5c2b952cb91c37a3714420017453a74dd7bfbb0646423d88f801c7795fa0"
+  },
+  {
+    "id": "d06",
+    "query": "How can a retriever match a passage that answers a question using completely different vocabulary, and quickly find the closest matches among millions of candidates?",
+    "kind": "paraphrase",
+    "relevant": [
+      "vector-embeddings-ann"
+    ],
+    "embed_key": "31ebb5a79dc9e6a67aa8d250eb59e2f67b0ec9913846dc44d25a5ccb2a537f05"
+  },
+  {
+    "id": "d07",
+    "query": "When a server refuses a request because the client is going too fast, what is the cooperative way the client should wait before trying again, and how does the server-side throttling pair with it?",
+    "kind": "multi",
+    "relevant": [
+      "rate-limiting",
+      "exponential-backoff"
+    ],
+    "embed_key": "3d515a1c264bda6f8246db40cf9cf4a67eae116f3a2730911c2f38ce77be58e2"
+  },
+  {
+    "id": "d08",
+    "query": "How can returning several IP addresses for a single hostname be used as a cheap way to spread incoming clients across servers?",
+    "kind": "multi",
+    "relevant": [
+      "dns-resolution",
+      "load-balancing"
+    ],
+    "embed_key": "2bf41c37ff666ffe1cdaea12201e628856c1007a7569e6e9c280adfb152be965"
+  }
+]

@@ -27,7 +27,13 @@ ROOT = Path(__file__).resolve().parents[1]
 HASH_FILE = ROOT / "scripts" / "denylist.sha256"
 
 # Files whose text + JSON string values are scanned.
-SCAN_GLOBS = ["corpus/**/*.md", "fixtures/index.jsonl", "fixtures/manifest.json", "evals/gold.jsonl"]
+SCAN_GLOBS = [
+    "corpus/**/*.md",
+    "fixtures/index.jsonl",
+    "fixtures/manifest.json",
+    "fixtures/demo_queries.json",
+    "evals/gold.jsonl",
+]
 
 # Compound + simple token candidates (so "discord-ops" and "ops" both surface).
 _CAND_RE = re.compile(r"[A-Za-z0-9_]+(?:[.-][A-Za-z0-9_]+)*")

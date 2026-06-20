@@ -1,0 +1,39 @@
+# Qdrant vector DB on Fly — PRIVATE (no public IP; reached only over .flycast by
+# the demo app in the same org + region). Deploy the upstream image directly.
+#
+# Set the app name, then before `fly deploy`:
+#   fly secrets set QDRANT__SERVICE__API_KEY=<random>   # Qdrant has NO auth by default
+#   fly ips list                                         # release any public IPs:
+#   fly ips release <public-v4/v6>
+#   fly ips allocate-v6 --private                        # private .flycast only
+#   fly volumes create qdrant_data --size 1 --region <region>   # 1 GB; snapshots off
+#
+# Cost: the volume bills ~$0.15/GB-month even while stopped; keep it <=1 GB and
+# leave snapshots off (they became billable Jan 2026). Realistic idle ~$0.30-0.75/mo.
+
+app = "CHANGEME-vrag-qdrant"
+primary_region = "iad"            # same org + region as the demo app
+
+[build]
+  # PIN the exact minor (snapshots only restore to the same minor). Verify the
+  # latest stable tag against the qdrant-client version (1.18) before deploying.
+  image = "qdrant/qdrant:v1.15.4"
+
+[env]
+  # .flycast is plain HTTP inside the private network; no TLS termination here.
+  QDRANT__SERVICE__ENABLE_TLS = "false"
+
+[mounts]
+  source = "qdrant_data"
+  destination = "/qdrant/storage"
+
+[http_service]
+  internal_port = 6333
+  force_https = false             # private network; no HTTPS redirect
+  auto_stop_machines = "stop"     # NOT "suspend" (suspend keeps live gRPC conns, caps at 2 GB)
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
