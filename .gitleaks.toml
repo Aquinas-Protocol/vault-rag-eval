@@ -1,0 +1,18 @@
+title = "vault-rag-eval gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = """
+fixtures/ holds only synthetic, content-addressed data: sha256 embed keys and
+content hashes in index.jsonl, and committed embedding vectors. These are
+high-entropy by nature and trip the default generic-api-key rule, but they are
+not secrets — they are deterministically derived from the public synthetic corpus
+(the provenance gate asserts it) and covered by the denylist scan. Exclude the
+data plane from secret scanning; code paths (src/, app/, scripts/, deploy/,
+.github/) are still scanned.
+"""
+paths = [
+  '''fixtures/.*''',
+]
