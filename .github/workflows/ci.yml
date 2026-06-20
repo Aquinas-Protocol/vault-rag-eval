@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   provenance:
@@ -38,6 +39,38 @@ jobs:
 
       - name: Provenance + unit tests
         run: python -m pytest -q
+
+  eval-gate:
+    # Keyless retrieval-eval gate: drives the real search() over the committed
+    # index with cached query embeddings — no Ollama, no API key. A missing/empty
+    # fixture is a hard error; metrics below baseline - tolerance fail the build.
+    # (The Qdrant + Postgres service-container form lands with the cloud stores.)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[dev]"
+      - name: Retrieval eval gate (keyless)
+        id: eval
+        run: python -m evals.run --keyless --gate
+      - name: Comment metrics on the PR
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '## Retrieval eval';
+            let body = marker + '\n\n';
+            try { body += fs.readFileSync('evals/metrics.md', 'utf8'); }
+            catch { body += '_metrics.md was not produced — the eval failed before writing metrics._'; }
+            const ok = '${{ steps.eval.outcome }}' === 'success';
+            body += `\n**Gate:** ${ok ? '✅ passed' : '❌ regression vs baseline'} · baseline \`evals/baseline.json\`.`;
+            const { data: comments } = await github.rest.issues.listComments({ ...context.repo, issue_number: context.issue.number });
+            const prev = comments.find((c) => c.body && c.body.startsWith(marker));
+            if (prev) await github.rest.issues.updateComment({ ...context.repo, comment_id: prev.id, body });
+            else await github.rest.issues.createComment({ ...context.repo, issue_number: context.issue.number, body });
 
   secrets-scan:
     runs-on: ubuntu-latest

@@ -1,5 +1,7 @@
 # vault-rag-eval
 
+[![ci](https://github.com/Aquinas-Protocol/vault-rag-eval/actions/workflows/ci.yml/badge.svg)](https://github.com/Aquinas-Protocol/vault-rag-eval/actions/workflows/ci.yml)
+
 > Eval-first hybrid retrieval over a synthetic corpus, with a keyless CI gate.
 > The cloud-deployed sibling of [email-triage-ts](https://github.com/Aquinas-Protocol/email-triage-ts):
 > same eval discipline, new modality (retrieval), deployed.
