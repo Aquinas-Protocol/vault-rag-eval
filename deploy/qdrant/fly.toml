@@ -15,9 +15,9 @@ app = "CHANGEME-vrag-qdrant"
 primary_region = "iad"            # same org + region as the demo app
 
 [build]
-  # PIN the exact minor (snapshots only restore to the same minor). Verify the
-  # latest stable tag against the qdrant-client version (1.18) before deploying.
-  image = "qdrant/qdrant:v1.15.4"
+  # Pinned to the exact minor (matches qdrant-client 1.18). Snapshots only restore
+  # to the same minor, so keep this pinned.
+  image = "qdrant/qdrant:v1.18.2"
 
 [env]
   # .flycast is plain HTTP inside the private network; no TLS termination here.
