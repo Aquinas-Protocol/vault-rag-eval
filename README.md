@@ -1,6 +1,7 @@
 # vault-rag-eval
 
 [![ci](https://github.com/Aquinas-Protocol/vault-rag-eval/actions/workflows/ci.yml/badge.svg)](https://github.com/Aquinas-Protocol/vault-rag-eval/actions/workflows/ci.yml)
+[![eval-cloud](https://github.com/Aquinas-Protocol/vault-rag-eval/actions/workflows/eval-cloud.yml/badge.svg)](https://github.com/Aquinas-Protocol/vault-rag-eval/actions/workflows/eval-cloud.yml)
 
 > Dense + hybrid retrieval over a synthetic corpus, decided by a **keyless** eval
 > gate, deployed to a real cloud container. The cloud-deployed sibling of

@@ -1,0 +1,65 @@
+name: eval-cloud
+
+# The eval + integration run against REAL Qdrant and Postgres service containers,
+# seeded from the committed fixtures — keyless (committed query embeddings), no
+# managed cloud, no secrets. Proves the deployed stores (not just the in-process
+# backend) serve the baseline retrieval quality and that the lexical arm rescues
+# identifier queries.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "src/vrag/stores/**"
+      - "src/vrag/cloud.py"
+      - "evals/**"
+      - "fixtures/**"
+      - "tests/test_postgres_integration.py"
+      - "tests/test_stores.py"
+      - ".github/workflows/eval-cloud.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  cloud-eval:
+    runs-on: ubuntu-latest
+    services:
+      qdrant:
+        image: qdrant/qdrant:v1.18.2
+        ports: ["6333:6333"]
+        # The qdrant image ships no curl/wget, so there is no container health-cmd;
+        # readiness is polled from the runner (which has curl) before seeding.
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vrag
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      QDRANT_URL: http://localhost:6333
+      NEON_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/vrag
+      NEON_DIRECT_URL: postgresql://postgres:postgres@localhost:5432/vrag
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[server,dev]"
+
+      - name: Wait for Qdrant /readyz (no curl in the image)
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:6333/readyz && echo " qdrant ready" && exit 0
+            sleep 2
+          done
+          echo "qdrant did not become ready"; exit 1
+
+      - name: Seed Qdrant + Postgres from committed fixtures
+        run: python scripts/seed_stores.py --qdrant --postgres --recreate
+
+      - name: Eval + integration against the real stores (keyless)
+        run: python -m pytest -q tests/test_postgres_integration.py tests/test_stores.py
