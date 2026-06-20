@@ -1,0 +1,51 @@
+name: ci
+
+# Slice 0 spine: provenance + privacy. Keyless by design — no Ollama, no API key.
+# (The retrieval-eval gate against Qdrant + Postgres service containers is added in
+# its own workflow once those stores exist.)
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  provenance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history for the denylist history scan
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[dev]"
+
+      # Allowlist inversion: every committed data artifact must be regenerable from
+      # corpus/ + the committed embedding cache, with no model and no key. A miss is
+      # a hard error; any drift dirties the tree and fails the build.
+      - name: Regenerate fixtures keyless
+        run: python scripts/make_fixtures.py --keyless
+      - name: Assert committed fixtures are byte-identical
+        run: git diff --exit-code -- fixtures/ evals/ || (echo "::error::committed fixtures differ from a fresh keyless rebuild — run 'make fixtures' and commit" && exit 1)
+
+      # Secondary tripwire: denylisted tokens / personal-data shapes over the tree
+      # AND git history (the first place an adversary looks).
+      - name: Denylist scan (tree + history)
+        run: python scripts/denylist_scan.py --history
+
+      - name: Provenance + unit tests
+        run: python -m pytest -q
+
+  secrets-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

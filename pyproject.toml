@@ -1,0 +1,37 @@
+[project]
+name = "vault-rag-eval"
+version = "0.1.0"
+description = "Eval-first hybrid retrieval over a synthetic corpus, with a keyless CI gate."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+# Core (Slice 0-2: provenance harness + keyless eval) is stdlib-only; embeddings
+# go over Ollama's HTTP API via urllib. No third-party runtime dep is needed to
+# build fixtures or run the keyless gate.
+dependencies = []
+
+[project.optional-dependencies]
+# Cloud stores + service (Slices 3-4). qdrant-client ships a local in-process
+# mode so dev needs no Qdrant server.
+server = [
+  "qdrant-client>=1.12",
+  "psycopg[binary]>=3.2",
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+]
+dev = [
+  "pytest>=8",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Never let pytest write its cache into the repo tree on CI runners that warn.
+addopts = "-p no:cacheprovider"

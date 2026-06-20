@@ -1,0 +1,9 @@
+# Pin LF everywhere. The provenance gate asserts a fresh `make fixtures` is
+# byte-identical to the committed artifacts; CRLF<->LF conversion across the
+# Windows author and the Linux CI runner would break that byte-equality. Force LF
+# for all text so the bytes are platform-independent.
+* text=auto eol=lf
+*.json text eol=lf
+*.jsonl text eol=lf
+*.md text eol=lf
+*.py text eol=lf

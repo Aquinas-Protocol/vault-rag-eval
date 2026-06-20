@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local environment / secrets (real values live in fly secrets / GH Actions secrets)
+.env
+.env.local
+*.local.txt
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Local-only runtime artifacts. NOTE: fixtures/ is COMMITTED on purpose — the
+# committed corpus snapshot, query-embedding fixtures, and the content-addressed
+# embedding cache are what make CI keyless and the build reproducible.
+/scratch/
+*.log

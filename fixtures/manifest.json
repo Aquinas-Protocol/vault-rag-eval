@@ -1,0 +1,33 @@
+{
+  "chunk_count": 120,
+  "chunker": {
+    "id": "heading-aware",
+    "min_chars": 60,
+    "overlap": "1-paragraph",
+    "target_chars": 1800,
+    "version": "v1"
+  },
+  "config_version": "v1|nomic-embed-text|768",
+  "corpus_hash": "088583d08e31130dfd5c20ee1761d5874150f940de30118caa1c2564ecf4f10b",
+  "embedding": {
+    "dim": 768,
+    "model": "nomic-embed-text",
+    "provider": "ollama"
+  },
+  "fusion": {
+    "depth": 50,
+    "k": 60,
+    "method": "rrf"
+  },
+  "lexical": {
+    "config": [
+      "simple",
+      "english",
+      "pg_trgm"
+    ],
+    "engine": "postgres-tsvector",
+    "note": "full-text ranking, not BM25 (no IDF/TF-saturation/length-norm)",
+    "rank": "ts_rank_cd"
+  },
+  "schema_version": 1
+}
